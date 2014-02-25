@@ -9,13 +9,19 @@ ruleset a16x89 {
         >>
         author "Phil Windley"
         logging on
-        
+        use module a16x93 alias config
+
+        provides get_articles
     }
 
     dispatch {
     }
 
     global { 
+        get_articles = function () {
+            app:BlogArticles || [];
+        };
+        
         mk_article = function (author, title, body) {
           postTime = time:now({"tz":"America/Denver"});
           { postTime : {
@@ -27,19 +33,11 @@ ruleset a16x89 {
           }
         }
         
-    }
+    } 
     
       rule place_clear_button {
         select when pageview "kblog"
-        pre {
-          button = <<
-    <li><a href="javascript:void(0);" id="siteNavClear">Clear</a></li>
-           >>;
-        }
-        {
-         prepend("#navlist", button);
-         watch("#siteNavClear",  "click");
-        }
+        config:place_button("Clear");
       }
 
     // ========================================================================
@@ -54,7 +52,7 @@ ruleset a16x89 {
     // ========================================================================
     rule retrieve_data {
       select when explicit need_blog_data
-      noop();
+      pre {}   
       always {
         raise explicit event blog_data_ready for a16x88 with
           blogdata = app:BlogArticles || []
@@ -65,16 +63,24 @@ ruleset a16x89 {
     rule add_article {
         select when explicit new_article_available
         pre {
-            postHash = mk_article(event:param("postauthor"),
-                                  event:param("posttitle"),
-                                  event:param("postbody"));
+            post = event:param("post");
+            postHash = mk_article(post.pick("$..postauthor"),
+                                  post.pick("$..posttitle"),
+                                  post.pick("$..postbody"));
             BlogArticles = app:BlogArticles || {};
         }
-        //notify("Storing data", postTitle);
+        //notify("Data", post) with sticky = true;
         always {
             set app:BlogArticles BlogArticles.put(postHash);
             raise explicit event new_article_added for a16x88;
         }
     }
+    
+
+
+
+
+
+
 
 }

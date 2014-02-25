@@ -5,33 +5,26 @@ ruleset a16x90 {
 Ruleset to post to KBlog. This is intended to be used as a extension to only allow people with the bookmarket to post. 
     >>
     author "Phil Windley"
-    logging off
+    logging on
+    use module a16x93 alias config
   }
 
   dispatch {
   }
 
   global {
+
   }
   
   rule place_button {
     select when pageview "kblog"
-    pre {
-      button = <<
-<li><a href="javascript:void(0);" id="siteNavPost">Post</a></li>
-       >>;
-    }
-    {
-     prepend("#navlist", button);
-     watch("#siteNavPost",  "click");
-    }
+    config:place_button("Post");
   }
 
   rule place_form {
     select when web click "#siteNavPost"
     pre {
       form = <<
-<div id="leftcontainer">
 <h2 class="mainheading">Post</h2> 
 <article class="post">
  <form onsubmit="return false" method="post" class="form" id="blogform">
@@ -55,22 +48,28 @@ Ruleset to post to KBlog. This is intended to be used as a extension to only all
    <div class="clear"></div>
   </form>
  </article>
- </div>
      >>;
+     title = config:blogtitle + "- Post";
    }
    {
-    replace_html("#leftcontainer",form);
+    config:paint_container(title, form);
     watch("#blogform", "submit");
+   }
+   always {
+     raise explicit event post_form_ready for a16x91 with
+       form_id = "#blogform"
    }
   }
   
   rule handle_submit {
     select when submit "#blogform"
     always {
-      raise explicit event new_article_available for a16x89 with
-        postauthor = event:param("postauthor") and
-        posttitle = event:param("posttitle") and
-        postbody = event:param("postbody");
+      raise explicit event new_article_available for ["a16x89", "a16x91"] with
+        post = event:params();
     }
   }
+  
+  
+  
+
 }
